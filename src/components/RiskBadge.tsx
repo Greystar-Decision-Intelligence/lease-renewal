@@ -24,7 +24,7 @@ export function RiskBadge({ category, size = 'sm' }: { category: RiskCategory; s
         className="rounded-full shrink-0"
         style={{ width: 6, height: 6, backgroundColor: text }}
       />
-      {label} Risk
+      {label} Priority
     </span>
   );
 }

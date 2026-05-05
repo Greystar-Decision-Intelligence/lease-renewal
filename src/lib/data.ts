@@ -1,4 +1,43 @@
-import { Resident, RiskCategory, RetentionVerdict } from './types';
+import { Resident, RiskCategory, PropertyMeta, TrendDataPoint } from './types';
+
+export const propertyMeta: Record<string, PropertyMeta> = {
+  'Greystar @ The Pines': {
+    name: 'Greystar @ The Pines',
+    strategy: 'occupancy',
+    rentControlPct: 0.03,
+    occupancyRate: 0.88,
+    targetOccupancy: 0.92,
+  },
+  'Greystar @ Riverside': {
+    name: 'Greystar @ Riverside',
+    strategy: 'revenue',
+    rentControlPct: null,
+    occupancyRate: 0.95,
+    targetOccupancy: 0.92,
+  },
+  'Greystar @ Midtown': {
+    name: 'Greystar @ Midtown',
+    strategy: 'revenue',
+    rentControlPct: 0.05,
+    occupancyRate: 0.93,
+    targetOccupancy: 0.92,
+  },
+};
+
+export const portfolioTrends: TrendDataPoint[] = [
+  { month: "Nov '25", rentRoll: 32800, avgScore: 67, renewalRate: 0.72, occupancy: 0.89, isProjection: false },
+  { month: "Dec '25", rentRoll: 33100, avgScore: 65, renewalRate: 0.75, occupancy: 0.90, isProjection: false },
+  { month: "Jan '26", rentRoll: 33400, avgScore: 63, renewalRate: 0.78, occupancy: 0.91, isProjection: false },
+  { month: "Feb '26", rentRoll: 33700, avgScore: 62, renewalRate: 0.79, occupancy: 0.91, isProjection: false },
+  { month: "Mar '26", rentRoll: 34100, avgScore: 61, renewalRate: 0.80, occupancy: 0.92, isProjection: false },
+  { month: "Apr '26", rentRoll: 34350, avgScore: 61, renewalRate: 0.80, occupancy: 0.92, isProjection: false },
+  { month: "May '26", rentRoll: 34500, avgScore: 61, renewalRate: 0.80, occupancy: 0.92, isProjection: false },
+  { month: "Jun '26", rentRoll: 34900, avgScore: 58, renewalRate: 0.82, occupancy: 0.93, isProjection: true },
+  { month: "Jul '26", rentRoll: 35300, avgScore: 55, renewalRate: 0.83, occupancy: 0.93, isProjection: true },
+  { month: "Aug '26", rentRoll: 35600, avgScore: 53, renewalRate: 0.84, occupancy: 0.94, isProjection: true },
+  { month: "Sep '26", rentRoll: 35900, avgScore: 51, renewalRate: 0.85, occupancy: 0.94, isProjection: true },
+  { month: "Oct '26", rentRoll: 36200, avgScore: 49, renewalRate: 0.86, occupancy: 0.95, isProjection: true },
+];
 
 function riskCategory(score: number): RiskCategory {
   if (score >= 75) return 'very-high';
@@ -110,12 +149,12 @@ export const residents: Resident[] = [
         description: 'Proposed 14% increase is significantly above market. Primary churn driver.',
       },
       {
-        key: 'community_engagement',
-        label: 'Community Engagement',
-        value: 'Low (1 event/yr)',
+        key: 'app_engagement',
+        label: 'App Engagement',
+        value: 'Low (9 sessions/mo)',
         impact: 'negative',
         weight: 0.45,
-        description: 'Low engagement may indicate detachment from the property community.',
+        description: 'Below-average resident portal activity — infrequent login, no partner offer interactions.',
       },
       {
         key: 'open_work_orders',
@@ -160,7 +199,7 @@ export const residents: Resident[] = [
       {
         id: 'a002-3',
         priority: 'medium',
-        action: 'Invite to upcoming community event to boost engagement',
+        action: 'Push targeted Uber Eats or partner offer via app to re-engage resident',
         owner: 'Community Manager',
         dueInDays: 14,
       },
@@ -180,14 +219,6 @@ export const residents: Resident[] = [
       'Highest-rent unit in the cohort. Retention ROI is very strong — prioritize this resident.',
     lifetimeValue: 38400,
     riskFactors: [
-      {
-        key: 'noise_complaints',
-        label: 'Noise Complaints Filed',
-        value: '3 received',
-        impact: 'negative',
-        weight: 0.72,
-        description: 'Resident filed 3 noise complaints about neighbors in 90 days.',
-      },
       {
         key: 'rent_increase',
         label: 'Rent Increase',
@@ -340,12 +371,20 @@ export const residents: Resident[] = [
         description: 'Moderate increase but resident may struggle given payment history.',
       },
       {
-        key: 'community_engagement',
-        label: 'Community Engagement',
-        value: 'High (6 events/yr)',
+        key: 'app_engagement',
+        label: 'App Engagement',
+        value: 'High (51 sessions/mo)',
         impact: 'positive',
         weight: 0.55,
-        description: 'Active community participant — strong social ties to property.',
+        description: 'Active resident portal user — frequently checks offers and interacts with partner promotions.',
+      },
+      {
+        key: 'ad_interaction',
+        label: 'Partner Offer Engagement',
+        value: '5 offers redeemed',
+        impact: 'positive',
+        weight: 0.30,
+        description: 'Redeemed 5 Uber Eats and partner offers in the last 90 days — high platform stickiness.',
       },
     ],
     actionItems: [
@@ -419,12 +458,20 @@ export const residents: Resident[] = [
         description: 'Long tenure with consistent lease renewals historically.',
       },
       {
-        key: 'community_engagement',
-        label: 'Community Engagement',
-        value: 'High (8 events/yr)',
+        key: 'app_engagement',
+        label: 'App Engagement',
+        value: 'High (58 sessions/mo)',
         impact: 'positive',
         weight: 0.55,
-        description: 'Very active — attends most community events.',
+        description: 'Consistent portal usage and high interaction with partner offers.',
+      },
+      {
+        key: 'ad_interaction',
+        label: 'Partner Offer Engagement',
+        value: '7 offers redeemed',
+        impact: 'positive',
+        weight: 0.40,
+        description: 'Regularly redeems Uber Eats and other partner promotions — strong platform attachment.',
       },
     ],
     actionItems: [
@@ -619,12 +666,20 @@ export const residents: Resident[] = [
         description: 'Five-year tenure is a very strong retention indicator.',
       },
       {
-        key: 'community_engagement',
-        label: 'Community Engagement',
-        value: 'Moderate (4 events/yr)',
+        key: 'app_engagement',
+        label: 'App Engagement',
+        value: 'Moderate (34 sessions/mo)',
         impact: 'positive',
         weight: 0.35,
-        description: 'Engages with property community regularly.',
+        description: 'Steady portal usage with occasional partner offer interaction.',
+      },
+      {
+        key: 'ad_interaction',
+        label: 'Partner Offer Engagement',
+        value: '3 offers redeemed',
+        impact: 'positive',
+        weight: 0.25,
+        description: 'Has redeemed a few Uber Eats offers — moderate platform engagement.',
       },
     ],
     actionItems: [
@@ -798,12 +853,20 @@ export const residents: Resident[] = [
         description: 'Longest-tenure resident in the cohort. Extremely strong retention signal.',
       },
       {
-        key: 'community_engagement',
-        label: 'Community Engagement',
-        value: 'Very High (12 events/yr)',
+        key: 'app_engagement',
+        label: 'App Engagement',
+        value: 'Very High (90+ sessions/mo)',
         impact: 'positive',
         weight: 0.75,
-        description: 'Most engaged resident in the property — community ambassador.',
+        description: 'Highest portal usage in the cohort — daily logins, power user of resident features.',
+      },
+      {
+        key: 'ad_interaction',
+        label: 'Partner Offer Engagement',
+        value: '14 offers redeemed',
+        impact: 'positive',
+        weight: 0.55,
+        description: 'Top partner offer redeemer — Uber Eats, grocery, and local perks. Extremely high platform stickiness.',
       },
     ],
     actionItems: [
@@ -891,16 +954,16 @@ export const residents: Resident[] = [
     riskCategory: riskCategory(67),
     retentionVerdict: 'yes',
     retentionRationale:
-      'High-value unit, great payment record. Risk is driven by competitor market comparison — educate on value and offer modest concession.',
+      'High-value unit, great payment record. Risk is driven by low app engagement and above-market rent increase — re-engage via partner offers and present a modest concession.',
     lifetimeValue: 33000,
     riskFactors: [
       {
-        key: 'competitor_comparison',
-        label: 'Competitor Market Activity',
-        value: 'Active search signals',
+        key: 'app_engagement',
+        label: 'App Engagement',
+        value: 'Low (7 sessions/mo)',
         impact: 'negative',
-        weight: 0.78,
-        description: 'Resident has inquired about competing properties in the last 60 days.',
+        weight: 0.72,
+        description: 'Sharp drop in portal activity over the last 60 days — no partner offer clicks, minimal login.',
       },
       {
         key: 'rent_increase',
@@ -908,7 +971,7 @@ export const residents: Resident[] = [
         value: '+8%',
         impact: 'negative',
         weight: 0.60,
-        description: 'Competing properties offering comparable units at lower rates.',
+        description: 'Above-market increase for this unit tier — compounds disengagement risk.',
       },
       {
         key: 'late_payments',
@@ -931,7 +994,7 @@ export const residents: Resident[] = [
       {
         id: 'a014-1',
         priority: 'urgent',
-        action: 'Schedule call to present value comparison against competitor options',
+        action: 'Push personalized Uber Eats offer via app to re-engage — follow up with renewal call',
         owner: 'Leasing Manager',
         dueInDays: 3,
       },
@@ -1007,3 +1070,7 @@ export function getResidentById(id: string): Resident | undefined {
 }
 
 export const properties = [...new Set(residents.map((r) => r.property))];
+
+export function getResidentProperty(resident: Resident): PropertyMeta {
+  return propertyMeta[resident.property] ?? propertyMeta['Greystar @ Riverside'];
+}

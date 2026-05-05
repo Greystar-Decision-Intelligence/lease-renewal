@@ -1,9 +1,9 @@
 import { RetentionVerdict } from '@/lib/types';
 
 const config: Record<RetentionVerdict, { label: string; icon: string; bg: string; text: string; border: string }> = {
-  yes:         { label: 'Worth Retaining',    icon: '✓', bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
-  conditional: { label: 'Conditional',        icon: '~', bg: '#FFFBEB', text: '#B45309', border: '#FDE68A' },
-  no:          { label: 'Do Not Prioritize',  icon: '✕', bg: '#F8F9FB', text: '#6B7A99', border: '#E4E7EE' },
+  yes:         { label: 'Pursue Renewal',        icon: '✓', bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
+  conditional: { label: 'Pursue with Conditions', icon: '~', bg: '#FFFBEB', text: '#B45309', border: '#FDE68A' },
+  no:          { label: 'Do Not Pursue',           icon: '✕', bg: '#F8F9FB', text: '#6B7A99', border: '#E4E7EE' },
 };
 
 export function RetentionTag({ verdict }: { verdict: RetentionVerdict }) {

@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { Resident, RiskCategory } from '@/lib/types';
 import { RiskBadge, riskBarColor } from './RiskBadge';
 import { RetentionTag } from './RetentionTag';
+import { PropertyStrategyTag } from './PropertyStrategyTag';
+import { TrendsView } from './TrendsView';
 import { Navbar } from './Navbar';
-import { properties } from '@/lib/data';
+import { properties, propertyMeta, portfolioTrends } from '@/lib/data';
 
 const RISK_ORDER: RiskCategory[] = ['very-high', 'high', 'medium', 'low'];
 
@@ -21,7 +23,7 @@ const tierConfig: {
 }[] = [
   {
     category: 'very-high',
-    label: 'Very High Risk',
+    label: 'Very High Priority',
     short: 'Very High',
     bar: 'bg-red-500',
     dot: 'bg-red-500',
@@ -30,7 +32,7 @@ const tierConfig: {
   },
   {
     category: 'high',
-    label: 'High Risk',
+    label: 'High Priority',
     short: 'High',
     bar: 'bg-orange-400',
     dot: 'bg-orange-400',
@@ -39,7 +41,7 @@ const tierConfig: {
   },
   {
     category: 'medium',
-    label: 'Medium Risk',
+    label: 'Medium Priority',
     short: 'Medium',
     bar: 'bg-amber-400',
     dot: 'bg-amber-400',
@@ -48,7 +50,7 @@ const tierConfig: {
   },
   {
     category: 'low',
-    label: 'Low Risk',
+    label: 'Low Priority',
     short: 'Low',
     bar: 'bg-emerald-500',
     dot: 'bg-emerald-500',
@@ -71,6 +73,7 @@ function avatarColor(id: string): string {
 }
 
 export function Dashboard({ residents }: { residents: Resident[] }) {
+  const [activeTab, setActiveTab] = useState<'residents' | 'trends'>('residents');
   const [filterRisk, setFilterRisk] = useState<RiskCategory | 'all'>('all');
   const [filterProperty, setFilterProperty] = useState<string>('all');
   const [sortKey, setSortKey] = useState<'riskScore' | 'monthlyRent' | 'leaseEndDate'>('riskScore');
@@ -125,7 +128,7 @@ export function Dashboard({ residents }: { residents: Resident[] }) {
               Renewal Intelligence
             </p>
             <h1 className="text-3xl font-bold" style={{ color: 'var(--gs-navy)' }}>
-              Resident Risk Dashboard
+              Lease Renewal Dashboard
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--gs-text-muted)' }}>
               {residents.length} residents · {properties.length} properties · Powered by predictive model
@@ -137,14 +140,37 @@ export function Dashboard({ residents }: { residents: Resident[] }) {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 pb-12 space-y-6">
+      {/* Tab bar */}
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="flex gap-1 border-b" style={{ borderColor: 'var(--gs-border)' }}>
+          {(['residents', 'trends'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="px-5 py-2.5 text-sm font-semibold capitalize border-b-2 -mb-px transition-colors"
+              style={{
+                borderBottomColor: activeTab === tab ? 'var(--gs-navy)' : 'transparent',
+                color: activeTab === tab ? 'var(--gs-navy)' : 'var(--gs-text-muted)',
+              }}
+            >
+              {tab === 'residents' ? 'Residents' : 'Trends & Strategy'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-8 pb-12 space-y-6 mt-6">
+
+        {activeTab === 'trends' && <TrendsView data={portfolioTrends} />}
+
+        {activeTab === 'residents' && <>
 
         {/* KPI strip */}
         <div className="grid grid-cols-4 gap-4">
           {[
             { label: 'Total Residents', value: residents.length, sub: 'in portfolio', accent: false },
             { label: 'Revenue at Risk', value: `$${(atRiskRevenue / 1000).toFixed(0)}k`, sub: 'annualized', accent: true },
-            { label: 'Avg Risk Score', value: `${avgRisk}/100`, sub: 'portfolio mean', accent: false },
+            { label: 'Avg Renewal Score', value: `${avgRisk}/100`, sub: 'portfolio mean', accent: false },
             { label: 'Expiring ≤ 60 Days', value: expiringIn60, sub: 'leases', accent: false },
           ].map(({ label, value, sub, accent }) => (
             <div
@@ -242,7 +268,7 @@ export function Dashboard({ residents }: { residents: Resident[] }) {
             className="px-3 py-2 text-sm rounded-lg border bg-white focus:outline-none"
             style={{ borderColor: 'var(--gs-border)', color: 'var(--gs-navy)' }}
           >
-            <option value="riskScore">Sort: Risk Score</option>
+            <option value="riskScore">Sort: Renewal Score</option>
             <option value="leaseEndDate">Sort: Lease End</option>
             <option value="monthlyRent">Sort: Monthly Rent</option>
           </select>
@@ -267,7 +293,7 @@ export function Dashboard({ residents }: { residents: Resident[] }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ backgroundColor: '#F8F9FB', borderColor: 'var(--gs-border)' }}>
-                {['Resident', 'Property', 'Risk Level', 'Score', 'Rent / yr', 'Lease Ends', 'Retention', ''].map((h) => (
+                {['Resident', 'Property', 'Priority Level', 'Score', 'Rent / yr', 'Lease Ends', 'Recommendation', ''].map((h) => (
                   <th
                     key={h}
                     className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wide"
@@ -306,7 +332,10 @@ export function Dashboard({ residents }: { residents: Resident[] }) {
 
                     {/* Property */}
                     <td className="px-5 py-4">
-                      <p className="text-sm" style={{ color: 'var(--gs-navy)' }}>{r.property}</p>
+                      <p className="text-sm mb-1" style={{ color: 'var(--gs-navy)' }}>{r.property}</p>
+                      {propertyMeta[r.property] && (
+                        <PropertyStrategyTag strategy={propertyMeta[r.property].strategy} />
+                      )}
                     </td>
 
                     {/* Risk badge */}
@@ -378,6 +407,8 @@ export function Dashboard({ residents }: { residents: Resident[] }) {
             </tbody>
           </table>
         </div>
+
+        </>}
 
       </div>
     </div>

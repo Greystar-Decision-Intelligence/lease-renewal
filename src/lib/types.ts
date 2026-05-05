@@ -6,6 +6,42 @@ export type FactorImpact = 'negative' | 'neutral' | 'positive';
 
 export type ActionPriority = 'urgent' | 'high' | 'medium' | 'low';
 
+export type PropertyStrategy = 'occupancy' | 'revenue';
+
+export interface PropertyMeta {
+  name: string;
+  strategy: PropertyStrategy;
+  rentControlPct: number | null;
+  occupancyRate: number;
+  targetOccupancy: number;
+}
+
+export interface RecommendationStep {
+  label: string;
+  value: number;
+  note: string;
+  isConstraint?: boolean;
+  skipped?: boolean;
+}
+
+export interface RentRecommendation {
+  proposedRent: number;
+  recommendedRent: number;
+  rentControlApplies: boolean;
+  rentControlCap: number | null;
+  goingBackwards: boolean;
+  steps: RecommendationStep[];
+}
+
+export interface TrendDataPoint {
+  month: string;
+  rentRoll: number;
+  avgScore: number;
+  renewalRate: number;
+  occupancy: number;
+  isProjection: boolean;
+}
+
 export interface RiskFactor {
   key: string;
   label: string;

@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation';
-import { getResidentById } from '@/lib/data';
+import { getResidentById, getResidentProperty } from '@/lib/data';
+import { calculateRecommendedRent, calculateCostSavings } from '@/lib/rentLogic';
 import { RiskBadge } from '@/components/RiskBadge';
 import { RetentionTag } from '@/components/RetentionTag';
+import { RentRecommendationPanel } from '@/components/RentRecommendationPanel';
+import { CostSavingsPanel } from '@/components/CostSavingsPanel';
 import { FeatureBar } from '@/components/FeatureBar';
 import { ActionItemCard } from '@/components/ActionItemCard';
 import { Navbar } from '@/components/Navbar';
@@ -12,6 +15,9 @@ export default async function ResidentPage({ params }: { params: Promise<{ id: s
   if (!resident) notFound();
 
   const sortedFactors = [...resident.riskFactors].sort((a, b) => b.weight - a.weight);
+  const propMeta = getResidentProperty(resident);
+  const rentRec = calculateRecommendedRent(resident, propMeta);
+  const costAnalysis = calculateCostSavings(resident.monthlyRent, rentRec.recommendedRent);
   const sortedActions = [...resident.actionItems].sort((a, b) => {
     const order = { urgent: 0, high: 1, medium: 2, low: 3 };
     return order[a.priority] - order[b.priority];
@@ -86,7 +92,7 @@ export default async function ResidentPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               <p className="text-xs mt-1.5 font-medium" style={{ color: 'var(--gs-gold-light)' }}>
-                Churn Risk Score
+                Renewal Score
               </p>
             </div>
 
@@ -141,15 +147,27 @@ export default async function ResidentPage({ params }: { params: Promise<{ id: s
       >
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--gs-navy)' }}>
-            Retention Assessment
+            Renewal Recommendation
           </span>
           <span className="text-xs" style={{ color: 'var(--gs-text-muted)' }}>·</span>
           <span className="text-sm" style={{ color: 'var(--gs-navy)' }}>{resident.retentionRationale}</span>
         </div>
       </div>
 
+      {/* Rent recommendation + cost savings */}
+      <div className="max-w-6xl mx-auto px-8 pt-6">
+        <div className="grid grid-cols-2 gap-6">
+          <RentRecommendationPanel currentRent={resident.monthlyRent} rec={rentRec} />
+          <CostSavingsPanel
+            monthlyRent={resident.monthlyRent}
+            recommendedRent={rentRec.recommendedRent}
+            analysis={costAnalysis}
+          />
+        </div>
+      </div>
+
       {/* Body */}
-      <div className="max-w-6xl mx-auto px-8 py-8">
+      <div className="max-w-6xl mx-auto px-8 py-6">
         <div className="grid grid-cols-5 gap-6">
 
           {/* Risk factor breakdown */}
@@ -159,10 +177,10 @@ export default async function ResidentPage({ params }: { params: Promise<{ id: s
           >
             <div className="mb-6">
               <h2 className="text-base font-bold" style={{ color: 'var(--gs-navy)' }}>
-                Risk Factor Breakdown
+                Renewal Factors
               </h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--gs-text-muted)' }}>
-                Ranked by predictive weight — red increases risk, green reduces it
+                Ranked by predictive weight — red reduces renewal likelihood, green increases it
               </p>
             </div>
             <div className="space-y-5 divide-y" style={{ '--tw-divide-opacity': 1 } as React.CSSProperties}>
@@ -208,7 +226,7 @@ export default async function ResidentPage({ params }: { params: Promise<{ id: s
               </h2>
               <div className="space-y-3">
                 {[
-                  { label: 'Top Risk Driver', value: sortedFactors[0]?.label ?? '—' },
+                  { label: 'Top Renewal Factor', value: sortedFactors[0]?.label ?? '—' },
                   { label: 'Strongest Positive', value: sortedFactors.find((f) => f.impact === 'positive')?.label ?? 'None' },
                   { label: 'Late Payments (12mo)', value: resident.riskFactors.find((f) => f.key === 'late_payments')?.value ?? '0' },
                   { label: 'Annual Lease Value', value: `$${resident.lifetimeValue.toLocaleString()}` },
