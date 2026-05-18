@@ -1,1076 +1,331 @@
-import { Resident, RiskCategory, PropertyMeta, TrendDataPoint } from './types';
+import { Resident, RiskCategory, RetentionVerdict, PropertyMeta, TrendDataPoint, RiskFactor, ActionItem } from './types';
+import residentsRaw from '@/data/residents.json';
+import propertiesRaw from '@/data/properties.json';
 
-export const propertyMeta: Record<string, PropertyMeta> = {
-  'Greystar @ The Pines': {
-    name: 'Greystar @ The Pines',
-    strategy: 'occupancy',
-    rentControlPct: 0.03,
-    occupancyRate: 0.88,
-    targetOccupancy: 0.92,
-  },
-  'Greystar @ Riverside': {
-    name: 'Greystar @ Riverside',
-    strategy: 'revenue',
-    rentControlPct: null,
-    occupancyRate: 0.95,
-    targetOccupancy: 0.92,
-  },
-  'Greystar @ Midtown': {
-    name: 'Greystar @ Midtown',
-    strategy: 'revenue',
-    rentControlPct: 0.05,
-    occupancyRate: 0.93,
-    targetOccupancy: 0.92,
-  },
-};
+// ── Raw types matching the JSON schema ───────────────────────────────────────
 
-export const portfolioTrends: TrendDataPoint[] = [
-  { month: "Nov '25", rentRoll: 32800, avgScore: 67, renewalRate: 0.72, occupancy: 0.89, isProjection: false },
-  { month: "Dec '25", rentRoll: 33100, avgScore: 65, renewalRate: 0.75, occupancy: 0.90, isProjection: false },
-  { month: "Jan '26", rentRoll: 33400, avgScore: 63, renewalRate: 0.78, occupancy: 0.91, isProjection: false },
-  { month: "Feb '26", rentRoll: 33700, avgScore: 62, renewalRate: 0.79, occupancy: 0.91, isProjection: false },
-  { month: "Mar '26", rentRoll: 34100, avgScore: 61, renewalRate: 0.80, occupancy: 0.92, isProjection: false },
-  { month: "Apr '26", rentRoll: 34350, avgScore: 61, renewalRate: 0.80, occupancy: 0.92, isProjection: false },
-  { month: "May '26", rentRoll: 34500, avgScore: 61, renewalRate: 0.80, occupancy: 0.92, isProjection: false },
-  { month: "Jun '26", rentRoll: 34900, avgScore: 58, renewalRate: 0.82, occupancy: 0.93, isProjection: true },
-  { month: "Jul '26", rentRoll: 35300, avgScore: 55, renewalRate: 0.83, occupancy: 0.93, isProjection: true },
-  { month: "Aug '26", rentRoll: 35600, avgScore: 53, renewalRate: 0.84, occupancy: 0.94, isProjection: true },
-  { month: "Sep '26", rentRoll: 35900, avgScore: 51, renewalRate: 0.85, occupancy: 0.94, isProjection: true },
-  { month: "Oct '26", rentRoll: 36200, avgScore: 49, renewalRate: 0.86, occupancy: 0.95, isProjection: true },
-];
-
-function riskCategory(score: number): RiskCategory {
-  if (score >= 75) return 'very-high';
-  if (score >= 50) return 'high';
-  if (score >= 25) return 'medium';
-  return 'low';
+interface RawResident {
+  id: string;
+  name: string;
+  unit: string;
+  propertyId: number;
+  propertyName: string;
+  leaseEndDate: string;
+  monthlyRent: number;
+  riskScore: number;
+  riskCat: string;
+  retVerdict: string;
+  pAccept: number;
+  rti: number;    // rent-to-income ratio
+  crg: number;    // cumulative rent growth pct
+  wo: number;     // work orders last 90d
+  nsf: number;    // NSF count lifetime
+  smrConv: number; // submarket renewal conversion
+  oip: number;    // optimal increase pct
+  ks: number | null; // kingsley score
+  smChg: number;  // submarket rent change 12m
+  evict: number;  // eviction filed flag
+  ts: string;     // traffic source
+  pm: string;     // pricing method
+  state: string;
 }
 
-export const residents: Resident[] = [
-  {
-    id: 'r001',
-    name: 'Marcus Webb',
-    unit: '4B',
-    property: 'Greystar @ The Pines',
-    leaseEndDate: '2025-06-30',
-    monthlyRent: 2850,
-    riskScore: 88,
-    riskCategory: riskCategory(88),
-    retentionVerdict: 'conditional',
-    retentionRationale:
-      'High earner with 3-year tenure. Retention is worth attempting with a targeted concession, but maintenance issues must be resolved first.',
-    lifetimeValue: 34200,
-    riskFactors: [
-      {
-        key: 'open_work_orders',
-        label: 'Open Work Orders',
-        value: '6 unresolved',
-        impact: 'negative',
-        weight: 0.92,
-        description: '6 open maintenance tickets, 2 over 30 days old. Top driver of dissatisfaction.',
-      },
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+11%',
-        impact: 'negative',
-        weight: 0.78,
-        description: 'Proposed 11% increase is above market average of 6% for this zip code.',
-      },
-      {
-        key: 'days_since_contact',
-        label: 'Days Since Last Contact',
-        value: '47 days',
-        impact: 'negative',
-        weight: 0.55,
-        description: 'No outreach from leasing team in 47 days. Resident feels ignored.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '1',
-        impact: 'neutral',
-        weight: 0.15,
-        description: '1 late payment in the last 12 months — minor signal.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '3 years',
-        impact: 'positive',
-        weight: 0.40,
-        description: 'Long tenure suggests attachment to the community.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a001-1',
-        priority: 'urgent',
-        action: 'Resolve all open work orders within 5 business days',
-        owner: 'Maintenance Team',
-        dueInDays: 5,
-      },
-      {
-        id: 'a001-2',
-        priority: 'urgent',
-        action: 'Call resident to personally acknowledge service delays',
-        owner: 'Leasing Manager',
-        dueInDays: 2,
-      },
-      {
-        id: 'a001-3',
-        priority: 'high',
-        action: 'Offer 1-month rent concession or cap increase at 6%',
-        owner: 'Leasing Agent',
-        dueInDays: 7,
-      },
-    ],
-  },
-  {
-    id: 'r002',
-    name: 'Priya Nair',
-    unit: '12A',
-    property: 'Greystar @ Riverside',
-    leaseEndDate: '2025-07-31',
-    monthlyRent: 1950,
-    riskScore: 82,
-    riskCategory: riskCategory(82),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Perfect payment history and 4-year tenure. High retention value — a small concession will likely close renewal.',
-    lifetimeValue: 23400,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+14%',
-        impact: 'negative',
-        weight: 0.88,
-        description: 'Proposed 14% increase is significantly above market. Primary churn driver.',
-      },
-      {
-        key: 'app_engagement',
-        label: 'App Engagement',
-        value: 'Low (9 sessions/mo)',
-        impact: 'negative',
-        weight: 0.45,
-        description: 'Below-average resident portal activity — infrequent login, no partner offer interactions.',
-      },
-      {
-        key: 'open_work_orders',
-        label: 'Open Work Orders',
-        value: '1 unresolved',
-        impact: 'negative',
-        weight: 0.30,
-        description: 'Minor open ticket — HVAC filter replacement pending 18 days.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.50,
-        description: 'Perfect payment history — a very strong retention signal.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '4 years',
-        impact: 'positive',
-        weight: 0.60,
-        description: 'Four-year tenure shows strong attachment to the property.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a002-1',
-        priority: 'urgent',
-        action: 'Cap rent increase at 7% and present to resident with loyalty framing',
-        owner: 'Leasing Agent',
-        dueInDays: 3,
-      },
-      {
-        id: 'a002-2',
-        priority: 'high',
-        action: 'Resolve HVAC work order and send follow-up confirmation',
-        owner: 'Maintenance Team',
-        dueInDays: 5,
-      },
-      {
-        id: 'a002-3',
-        priority: 'medium',
-        action: 'Push targeted Uber Eats or partner offer via app to re-engage resident',
-        owner: 'Community Manager',
-        dueInDays: 14,
-      },
-    ],
-  },
-  {
-    id: 'r003',
-    name: 'Derek Hollis',
-    unit: '2C',
-    property: 'Greystar @ The Pines',
-    leaseEndDate: '2025-08-31',
-    monthlyRent: 3200,
-    riskScore: 79,
-    riskCategory: riskCategory(79),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Highest-rent unit in the cohort. Retention ROI is very strong — prioritize this resident.',
-    lifetimeValue: 38400,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+9%',
-        impact: 'negative',
-        weight: 0.65,
-        description: 'Proposed increase at the high end of market range.',
-      },
-      {
-        key: 'days_since_contact',
-        label: 'Days Since Last Contact',
-        value: '38 days',
-        impact: 'negative',
-        weight: 0.50,
-        description: 'No resolution communicated after complaint filings.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.45,
-        description: 'Consistent on-time payer.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a003-1',
-        priority: 'urgent',
-        action: 'Address noise complaints — mediate with neighbors or reassign unit',
-        owner: 'Property Manager',
-        dueInDays: 3,
-      },
-      {
-        id: 'a003-2',
-        priority: 'high',
-        action: 'Schedule 1:1 call to personally discuss concerns',
-        owner: 'Leasing Manager',
-        dueInDays: 2,
-      },
-      {
-        id: 'a003-3',
-        priority: 'medium',
-        action: 'Offer unit transfer to quieter floor at same rate',
-        owner: 'Leasing Agent',
-        dueInDays: 7,
-      },
-    ],
-  },
-  {
-    id: 'r004',
-    name: 'Sandra Kim',
-    unit: '8D',
-    property: 'Greystar @ Midtown',
-    leaseEndDate: '2025-06-15',
-    monthlyRent: 2100,
-    riskScore: 75,
-    riskCategory: riskCategory(75),
-    retentionVerdict: 'conditional',
-    retentionRationale:
-      'Moderate tenure, good payer. Retention feasible if rent increase is reduced and amenity issues resolved.',
-    lifetimeValue: 25200,
-    riskFactors: [
-      {
-        key: 'amenity_issues',
-        label: 'Amenity Complaints',
-        value: '2 filed',
-        impact: 'negative',
-        weight: 0.68,
-        description: 'Pool and gym equipment complaints unresolved for over 3 weeks.',
-      },
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+10%',
-        impact: 'negative',
-        weight: 0.70,
-        description: 'Double-digit increase on a mid-tier unit is a high churn risk.',
-      },
-      {
-        key: 'days_since_contact',
-        label: 'Days Since Last Contact',
-        value: '22 days',
-        impact: 'neutral',
-        weight: 0.25,
-        description: 'Moderate gap since last leasing outreach.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '2 years',
-        impact: 'positive',
-        weight: 0.30,
-        description: 'Two-year tenure is a modest positive indicator.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a004-1',
-        priority: 'urgent',
-        action: 'Escalate pool and gym repair to vendor — set completion date',
-        owner: 'Maintenance Team',
-        dueInDays: 7,
-      },
-      {
-        id: 'a004-2',
-        priority: 'high',
-        action: 'Offer renewal at +6% with amenity credit for delay',
-        owner: 'Leasing Agent',
-        dueInDays: 5,
-      },
-    ],
-  },
-  {
-    id: 'r005',
-    name: 'James Okafor',
-    unit: '15F',
-    property: 'Greystar @ Riverside',
-    leaseEndDate: '2025-09-30',
-    monthlyRent: 1750,
-    riskScore: 71,
-    riskCategory: riskCategory(71),
-    retentionVerdict: 'conditional',
-    retentionRationale:
-      'Multiple late payments undercut retention value. Worth retaining only if payment behavior improves.',
-    lifetimeValue: 21000,
-    riskFactors: [
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '4',
-        impact: 'negative',
-        weight: 0.85,
-        description: '4 late payments in 12 months — significantly above property average of 0.8.',
-      },
-      {
-        key: 'open_work_orders',
-        label: 'Open Work Orders',
-        value: '2 unresolved',
-        impact: 'negative',
-        weight: 0.40,
-        description: 'Dishwasher and window seal tickets open for 12+ days.',
-      },
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+7%',
-        impact: 'negative',
-        weight: 0.35,
-        description: 'Moderate increase but resident may struggle given payment history.',
-      },
-      {
-        key: 'app_engagement',
-        label: 'App Engagement',
-        value: 'High (51 sessions/mo)',
-        impact: 'positive',
-        weight: 0.55,
-        description: 'Active resident portal user — frequently checks offers and interacts with partner promotions.',
-      },
-      {
-        key: 'ad_interaction',
-        label: 'Partner Offer Engagement',
-        value: '5 offers redeemed',
-        impact: 'positive',
-        weight: 0.30,
-        description: 'Redeemed 5 Uber Eats and partner offers in the last 90 days — high platform stickiness.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a005-1',
-        priority: 'high',
-        action: 'Discuss payment plan options before presenting renewal offer',
-        owner: 'Leasing Manager',
-        dueInDays: 5,
-      },
-      {
-        id: 'a005-2',
-        priority: 'high',
-        action: 'Resolve dishwasher and window seal tickets',
-        owner: 'Maintenance Team',
-        dueInDays: 7,
-      },
-      {
-        id: 'a005-3',
-        priority: 'medium',
-        action: 'Offer flexible rent payment schedule at renewal',
-        owner: 'Leasing Agent',
-        dueInDays: 10,
-      },
-    ],
-  },
-  {
-    id: 'r006',
-    name: 'Aaliyah Torres',
-    unit: '3A',
-    property: 'Greystar @ Midtown',
-    leaseEndDate: '2025-07-15',
-    monthlyRent: 2400,
-    riskScore: 64,
-    riskCategory: riskCategory(64),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Strong tenure, near-perfect payment history. Modest rent increase should secure renewal.',
-    lifetimeValue: 28800,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+8%',
-        impact: 'negative',
-        weight: 0.62,
-        description: 'Above average increase for this property tier.',
-      },
-      {
-        key: 'days_since_contact',
-        label: 'Days Since Last Contact',
-        value: '30 days',
-        impact: 'negative',
-        weight: 0.38,
-        description: 'Due for outreach — no contact in 30 days.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '1',
-        impact: 'neutral',
-        weight: 0.20,
-        description: 'One minor late payment — low weight signal.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '3.5 years',
-        impact: 'positive',
-        weight: 0.65,
-        description: 'Long tenure with consistent lease renewals historically.',
-      },
-      {
-        key: 'app_engagement',
-        label: 'App Engagement',
-        value: 'High (58 sessions/mo)',
-        impact: 'positive',
-        weight: 0.55,
-        description: 'Consistent portal usage and high interaction with partner offers.',
-      },
-      {
-        key: 'ad_interaction',
-        label: 'Partner Offer Engagement',
-        value: '7 offers redeemed',
-        impact: 'positive',
-        weight: 0.40,
-        description: 'Regularly redeems Uber Eats and other partner promotions — strong platform attachment.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a006-1',
-        priority: 'high',
-        action: 'Send personalized renewal letter with loyalty appreciation',
-        owner: 'Leasing Agent',
-        dueInDays: 5,
-      },
-      {
-        id: 'a006-2',
-        priority: 'medium',
-        action: 'Offer early-bird renewal discount if signed within 30 days',
-        owner: 'Leasing Manager',
-        dueInDays: 7,
-      },
-    ],
-  },
-  {
-    id: 'r007',
-    name: 'Tyler Reeves',
-    unit: '7G',
-    property: 'Greystar @ The Pines',
-    leaseEndDate: '2025-08-15',
-    monthlyRent: 1680,
-    riskScore: 58,
-    riskCategory: riskCategory(58),
-    retentionVerdict: 'conditional',
-    retentionRationale:
-      'Recent job change flagged via application update. Financial uncertainty may drive non-renewal.',
-    lifetimeValue: 20160,
-    riskFactors: [
-      {
-        key: 'income_change',
-        label: 'Income Change',
-        value: 'Job change reported',
-        impact: 'negative',
-        weight: 0.75,
-        description: 'Resident updated employer info — possible income instability.',
-      },
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+6%',
-        impact: 'negative',
-        weight: 0.40,
-        description: 'Market-rate increase, but risky given income uncertainty.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '2',
-        impact: 'negative',
-        weight: 0.45,
-        description: '2 late payments — possibly correlated with income change.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '2 years',
-        impact: 'positive',
-        weight: 0.30,
-        description: 'Moderate tenure — some attachment to property.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a007-1',
-        priority: 'high',
-        action: 'Initiate sensitive conversation about financial situation',
-        owner: 'Leasing Manager',
-        dueInDays: 5,
-      },
-      {
-        id: 'a007-2',
-        priority: 'medium',
-        action: 'Explore shorter-term lease or reduced renewal rate as bridge',
-        owner: 'Leasing Agent',
-        dueInDays: 10,
-      },
-    ],
-  },
-  {
-    id: 'r008',
-    name: 'Fatima Yusuf',
-    unit: '9B',
-    property: 'Greystar @ Riverside',
-    leaseEndDate: '2025-06-30',
-    monthlyRent: 2250,
-    riskScore: 52,
-    riskCategory: riskCategory(52),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Solid payment history and 2.5 years of tenure. Moderate risk driven mostly by rent increase — reducible with a small concession.',
-    lifetimeValue: 27000,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+9%',
-        impact: 'negative',
-        weight: 0.60,
-        description: 'Primary risk driver — slightly above market for this unit type.',
-      },
-      {
-        key: 'open_work_orders',
-        label: 'Open Work Orders',
-        value: '1 unresolved',
-        impact: 'negative',
-        weight: 0.25,
-        description: 'Minor plumbing issue pending 8 days.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.55,
-        description: 'Flawless payment history.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '2.5 years',
-        impact: 'positive',
-        weight: 0.40,
-        description: 'Good tenure length with consistent renewals.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a008-1',
-        priority: 'high',
-        action: 'Cap rent increase at 7% and send offer by end of week',
-        owner: 'Leasing Agent',
-        dueInDays: 5,
-      },
-      {
-        id: 'a008-2',
-        priority: 'medium',
-        action: 'Resolve plumbing ticket before renewal conversation',
-        owner: 'Maintenance Team',
-        dueInDays: 3,
-      },
-    ],
-  },
-  {
-    id: 'r009',
-    name: 'Carlos Mendez',
-    unit: '1A',
-    property: 'Greystar @ Midtown',
-    leaseEndDate: '2025-10-31',
-    monthlyRent: 3500,
-    riskScore: 45,
-    riskCategory: riskCategory(45),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Highest-value resident with exemplary payment history. Very likely to renew — standard outreach sufficient.',
-    lifetimeValue: 42000,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+7%',
-        impact: 'negative',
-        weight: 0.48,
-        description: 'Moderate increase for a premium unit.',
-      },
-      {
-        key: 'days_since_contact',
-        label: 'Days Since Last Contact',
-        value: '25 days',
-        impact: 'neutral',
-        weight: 0.20,
-        description: 'Approaching time for standard renewal outreach.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.70,
-        description: 'Perfect payment history across entire tenancy.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '5 years',
-        impact: 'positive',
-        weight: 0.80,
-        description: 'Five-year tenure is a very strong retention indicator.',
-      },
-      {
-        key: 'app_engagement',
-        label: 'App Engagement',
-        value: 'Moderate (34 sessions/mo)',
-        impact: 'positive',
-        weight: 0.35,
-        description: 'Steady portal usage with occasional partner offer interaction.',
-      },
-      {
-        key: 'ad_interaction',
-        label: 'Partner Offer Engagement',
-        value: '3 offers redeemed',
-        impact: 'positive',
-        weight: 0.25,
-        description: 'Has redeemed a few Uber Eats offers — moderate platform engagement.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a009-1',
-        priority: 'medium',
-        action: 'Send standard 90-day renewal notice with VIP loyalty offer',
-        owner: 'Leasing Agent',
-        dueInDays: 14,
-      },
-    ],
-  },
-  {
-    id: 'r010',
-    name: 'Brenda Walsh',
-    unit: '6C',
-    property: 'Greystar @ The Pines',
-    leaseEndDate: '2025-07-31',
-    monthlyRent: 1900,
-    riskScore: 40,
-    riskCategory: riskCategory(40),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Long-term resident with stable history. Low risk — renewal expected without significant concessions.',
-    lifetimeValue: 22800,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+5%',
-        impact: 'neutral',
-        weight: 0.30,
-        description: 'Below-market increase — well within acceptable range.',
-      },
-      {
-        key: 'open_work_orders',
-        label: 'Open Work Orders',
-        value: '0',
-        impact: 'positive',
-        weight: 0.40,
-        description: 'All maintenance requests resolved promptly.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.60,
-        description: 'On-time payer every month.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '4 years',
-        impact: 'positive',
-        weight: 0.70,
-        description: 'Strong tenure with two prior renewals.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a010-1',
-        priority: 'low',
-        action: 'Send standard renewal notice at 90-day mark',
-        owner: 'Leasing Agent',
-        dueInDays: 21,
-      },
-    ],
-  },
-  {
-    id: 'r011',
-    name: 'Eli Shapiro',
-    unit: '11E',
-    property: 'Greystar @ Riverside',
-    leaseEndDate: '2025-11-30',
-    monthlyRent: 2050,
-    riskScore: 33,
-    riskCategory: riskCategory(33),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Stable, low-maintenance resident. Renewal expected with standard process.',
-    lifetimeValue: 24600,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+4%',
-        impact: 'neutral',
-        weight: 0.25,
-        description: 'Below-market increase, unlikely to cause churn.',
-      },
-      {
-        key: 'days_since_contact',
-        label: 'Days Since Last Contact',
-        value: '35 days',
-        impact: 'neutral',
-        weight: 0.20,
-        description: 'Routine outreach window.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.55,
-        description: 'Consistent, on-time payments.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '3 years',
-        impact: 'positive',
-        weight: 0.60,
-        description: 'Three renewals completed with no issues.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a011-1',
-        priority: 'low',
-        action: 'Send early renewal offer as a courtesy',
-        owner: 'Leasing Agent',
-        dueInDays: 30,
-      },
-    ],
-  },
-  {
-    id: 'r012',
-    name: 'Nina Patel',
-    unit: '5D',
-    property: 'Greystar @ Midtown',
-    leaseEndDate: '2025-08-31',
-    monthlyRent: 2300,
-    riskScore: 21,
-    riskCategory: riskCategory(21),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'Highly engaged, long-tenure resident. Renewal is near-certain — maintain positive relationship.',
-    lifetimeValue: 27600,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+4%',
-        impact: 'neutral',
-        weight: 0.18,
-        description: 'Minimal increase, within resident expectation range.',
-      },
-      {
-        key: 'open_work_orders',
-        label: 'Open Work Orders',
-        value: '0',
-        impact: 'positive',
-        weight: 0.35,
-        description: 'Zero open tickets — maintenance satisfaction is high.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.65,
-        description: 'Perfect payment record since move-in.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '5+ years',
-        impact: 'positive',
-        weight: 0.85,
-        description: 'Longest-tenure resident in the cohort. Extremely strong retention signal.',
-      },
-      {
-        key: 'app_engagement',
-        label: 'App Engagement',
-        value: 'Very High (90+ sessions/mo)',
-        impact: 'positive',
-        weight: 0.75,
-        description: 'Highest portal usage in the cohort — daily logins, power user of resident features.',
-      },
-      {
-        key: 'ad_interaction',
-        label: 'Partner Offer Engagement',
-        value: '14 offers redeemed',
-        impact: 'positive',
-        weight: 0.55,
-        description: 'Top partner offer redeemer — Uber Eats, grocery, and local perks. Extremely high platform stickiness.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a012-1',
-        priority: 'low',
-        action: 'Send VIP appreciation gift and renewal offer 90 days out',
-        owner: 'Community Manager',
-        dueInDays: 45,
-      },
-    ],
-  },
-  {
-    id: 'r013',
-    name: 'Reggie Foster',
-    unit: '14B',
-    property: 'Greystar @ The Pines',
-    leaseEndDate: '2025-06-15',
-    monthlyRent: 1820,
-    riskScore: 91,
-    riskCategory: riskCategory(91),
-    retentionVerdict: 'no',
-    retentionRationale:
-      'Chronic late payments, 5 open work orders, and a formal complaint on file. Retention unlikely and not recommended.',
-    lifetimeValue: 21840,
-    riskFactors: [
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '7',
-        impact: 'negative',
-        weight: 0.95,
-        description: '7 late payments — well above threshold. Financial instability likely.',
-      },
-      {
-        key: 'open_work_orders',
-        label: 'Open Work Orders',
-        value: '5 unresolved',
-        impact: 'negative',
-        weight: 0.80,
-        description: '5 open tickets, 3 over 45 days. Repeated scheduling refusals by resident.',
-      },
-      {
-        key: 'formal_complaint',
-        label: 'Formal Complaint',
-        value: '1 filed against',
-        impact: 'negative',
-        weight: 0.88,
-        description: 'Formal noise complaint filed by 3 neighbors — pending resolution.',
-      },
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+8%',
-        impact: 'negative',
-        weight: 0.42,
-        description: 'Increase compounds existing financial stress.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a013-1',
-        priority: 'urgent',
-        action: 'Consult legal on non-renewal notice timeline',
-        owner: 'Property Manager',
-        dueInDays: 3,
-      },
-      {
-        id: 'a013-2',
-        priority: 'high',
-        action: 'Document all open work order access refusals for file',
-        owner: 'Maintenance Team',
-        dueInDays: 5,
-      },
-    ],
-  },
-  {
-    id: 'r014',
-    name: 'Sophie Laurent',
-    unit: '2F',
-    property: 'Greystar @ Riverside',
-    leaseEndDate: '2025-09-15',
-    monthlyRent: 2750,
-    riskScore: 67,
-    riskCategory: riskCategory(67),
-    retentionVerdict: 'yes',
-    retentionRationale:
-      'High-value unit, great payment record. Risk is driven by low app engagement and above-market rent increase — re-engage via partner offers and present a modest concession.',
-    lifetimeValue: 33000,
-    riskFactors: [
-      {
-        key: 'app_engagement',
-        label: 'App Engagement',
-        value: 'Low (7 sessions/mo)',
-        impact: 'negative',
-        weight: 0.72,
-        description: 'Sharp drop in portal activity over the last 60 days — no partner offer clicks, minimal login.',
-      },
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+8%',
-        impact: 'negative',
-        weight: 0.60,
-        description: 'Above-market increase for this unit tier — compounds disengagement risk.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '0',
-        impact: 'positive',
-        weight: 0.55,
-        description: 'Excellent payer — zero late fees.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '2 years',
-        impact: 'positive',
-        weight: 0.35,
-        description: 'Moderate tenure, switched from previous Greystar property.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a014-1',
-        priority: 'urgent',
-        action: 'Push personalized Uber Eats offer via app to re-engage — follow up with renewal call',
-        owner: 'Leasing Manager',
-        dueInDays: 3,
-      },
-      {
-        id: 'a014-2',
-        priority: 'high',
-        action: 'Offer renewal at +5% with free parking for 6 months',
-        owner: 'Leasing Agent',
-        dueInDays: 5,
-      },
-    ],
-  },
-  {
-    id: 'r015',
-    name: 'David Okonkwo',
-    unit: '10C',
-    property: 'Greystar @ Midtown',
-    leaseEndDate: '2025-07-31',
-    monthlyRent: 2000,
-    riskScore: 48,
-    riskCategory: riskCategory(48),
-    retentionVerdict: 'yes',
-    retentionRationale: 'Stable resident with no red flags. Standard renewal process expected to succeed.',
-    lifetimeValue: 24000,
-    riskFactors: [
-      {
-        key: 'rent_increase',
-        label: 'Rent Increase',
-        value: '+6%',
-        impact: 'neutral',
-        weight: 0.35,
-        description: 'Market-rate increase.',
-      },
-      {
-        key: 'days_since_contact',
-        label: 'Days Since Last Contact',
-        value: '20 days',
-        impact: 'neutral',
-        weight: 0.20,
-        description: 'Normal contact cadence.',
-      },
-      {
-        key: 'late_payments',
-        label: 'Late Payments (12mo)',
-        value: '1',
-        impact: 'neutral',
-        weight: 0.22,
-        description: 'Single late payment — minor signal.',
-      },
-      {
-        key: 'tenure',
-        label: 'Tenure',
-        value: '2.5 years',
-        impact: 'positive',
-        weight: 0.50,
-        description: 'Consistent renter with two prior renewals.',
-      },
-    ],
-    actionItems: [
-      {
-        id: 'a015-1',
-        priority: 'medium',
-        action: 'Send renewal offer 90 days before lease end',
-        owner: 'Leasing Agent',
-        dueInDays: 14,
-      },
-    ],
-  },
-];
+interface RawProperty {
+  propertyId: number;
+  name: string;
+  state: string;
+  msa: string;
+  numUnits: number;
+  yearBuilt: number;
+  strategy: string;
+  rentControlPct: number | null;
+  occupancyRate: number;
+  targetOccupancy: number;
+}
+
+// ── Property metadata ────────────────────────────────────────────────────────
+
+const rawProperties = propertiesRaw as RawProperty[];
+
+export const propertyMeta: Record<string, PropertyMeta> = Object.fromEntries(
+  rawProperties.map((p) => [
+    p.name,
+    {
+      name: p.name,
+      strategy: p.strategy as PropertyMeta['strategy'],
+      rentControlPct: p.rentControlPct,
+      occupancyRate: p.occupancyRate,
+      targetOccupancy: p.targetOccupancy,
+      state: p.state,
+      msa: p.msa,
+      numUnits: p.numUnits,
+      yearBuilt: p.yearBuilt,
+    },
+  ])
+);
+
+export const properties: string[] = rawProperties.map((p) => p.name).sort();
+
+export function getResidentProperty(name: string): PropertyMeta | undefined {
+  return propertyMeta[name];
+}
+
+// ── Risk factor computation ───────────────────────────────────────────────────
+
+function computeRiskFactors(r: RawResident): RiskFactor[] {
+  const factors: RiskFactor[] = [];
+
+  // 1. Rent-to-income ratio
+  const rti = r.rti ?? 0.30;
+  factors.push({
+    key: 'rent_to_income_ratio',
+    label: 'Rent-to-Income Ratio',
+    value: rti.toFixed(2),
+    impact: rti > 0.38 ? 'negative' : rti < 0.28 ? 'positive' : 'neutral',
+    weight: rti > 0.50 ? 0.90 : rti > 0.40 ? 0.72 : rti > 0.33 ? 0.50 : rti > 0.25 ? 0.32 : 0.18,
+    description:
+      rti > 0.40
+        ? `Rent is ${(rti * 100).toFixed(0)}% of monthly income — significant affordability stress. High churn predictor.`
+        : rti > 0.30
+        ? `Rent is ${(rti * 100).toFixed(0)}% of monthly income — moderate pressure. Monitor closely.`
+        : `Rent is ${(rti * 100).toFixed(0)}% of monthly income — financially comfortable. Supports renewal.`,
+  });
+
+  // 2. Cumulative rent growth
+  const crg = r.crg ?? 0;
+  factors.push({
+    key: 'cumulative_rent_increase_pct_during_tenure',
+    label: 'Cumulative Rent Growth',
+    value: `+${(crg * 100).toFixed(1)}%`,
+    impact: crg > 0.15 ? 'negative' : crg < 0.04 ? 'positive' : 'neutral',
+    weight: crg > 0.20 ? 0.80 : crg > 0.15 ? 0.62 : crg > 0.08 ? 0.42 : crg > 0.03 ? 0.22 : 0.12,
+    description:
+      crg > 0.15
+        ? `Rent has grown ${(crg * 100).toFixed(1)}% since move-in — above typical tolerance. Increases churn likelihood.`
+        : crg > 0.05
+        ? `Rent has grown ${(crg * 100).toFixed(1)}% over tenure — in normal range. Neutral renewal signal.`
+        : `Minimal rent escalation (${(crg * 100).toFixed(1)}%) — resident has received stable pricing. Positive retention factor.`,
+  });
+
+  // 3. Recommended rent increase
+  const oip = r.oip ?? 0;
+  factors.push({
+    key: 'rent_increase',
+    label: 'Recommended Increase',
+    value: oip === 0 ? 'Flat (protect occupancy)' : `+${(oip * 100).toFixed(1)}%`,
+    impact: oip === 0 && r.pm === 'at_risk_flat' ? 'negative' : oip > 0.03 ? 'neutral' : 'positive',
+    weight: oip === 0 && r.pm === 'at_risk_flat' ? 0.55 : oip > 0.03 ? 0.30 : 0.20,
+    description:
+      r.pm === 'at_risk_flat'
+        ? `Flat renewal recommended — p(accept) is ${(r.pAccept * 100).toFixed(0)}%, below the 65% threshold for any increase.`
+        : r.pm === 'moderate_acceptance'
+        ? `Modest ${(oip * 100).toFixed(1)}% increase recommended. p(accept) ${(r.pAccept * 100).toFixed(0)}% supports a market-aligned offer.`
+        : `${(oip * 100).toFixed(1)}% increase recommended. High acceptance likelihood (${(r.pAccept * 100).toFixed(0)}%) supports revenue capture.`,
+  });
+
+  // 4. Work orders
+  const wo = r.wo ?? 0;
+  factors.push({
+    key: 'open_work_orders',
+    label: 'Open Work Orders (90d)',
+    value: String(wo),
+    impact: wo >= 4 ? 'negative' : wo === 0 ? 'positive' : 'neutral',
+    weight: wo >= 5 ? 0.65 : wo >= 3 ? 0.48 : wo === 2 ? 0.30 : wo === 1 ? 0.18 : 0.08,
+    description:
+      wo >= 4
+        ? `${wo} maintenance requests in last 90 days — elevated maintenance burden. Unresolved issues increase churn risk.`
+        : wo > 0
+        ? `${wo} maintenance request${wo > 1 ? 's' : ''} in last 90 days — typical usage. Ensure timely resolution.`
+        : `No open work orders in last 90 days — maintenance relationship in good standing.`,
+  });
+
+  // 5. NSF / payment history
+  const nsf = r.nsf ?? 0;
+  factors.push({
+    key: 'nsf_payments',
+    label: 'NSF Payments (lifetime)',
+    value: String(nsf),
+    impact: nsf >= 3 ? 'negative' : nsf > 0 ? 'neutral' : 'positive',
+    weight: nsf >= 5 ? 0.78 : nsf >= 3 ? 0.60 : nsf >= 1 ? 0.38 : 0.08,
+    description:
+      nsf >= 3
+        ? `${nsf} NSF/returned payments over tenure — pattern of financial stress. Higher churn and delinquency risk.`
+        : nsf > 0
+        ? `${nsf} NSF payment${nsf > 1 ? 's' : ''} on record — minor payment friction. Monitor going forward.`
+        : `No NSF payments — consistent payment history. Strong positive signal.`,
+  });
+
+  // 6. Submarket renewal conversion
+  const smr = r.smrConv ?? 0.58;
+  factors.push({
+    key: 'submarket_renewal_conversion',
+    label: 'Submarket Renewal Rate',
+    value: `${(smr * 100).toFixed(0)}%`,
+    impact: smr >= 0.65 ? 'positive' : smr <= 0.50 ? 'negative' : 'neutral',
+    weight: smr >= 0.70 ? 0.20 : smr >= 0.60 ? 0.30 : smr >= 0.52 ? 0.42 : 0.55,
+    description:
+      smr >= 0.65
+        ? `Submarket renewal rate is ${(smr * 100).toFixed(0)}% — strong market retention. Residents have few competitive alternatives.`
+        : smr >= 0.55
+        ? `Submarket renewal rate is ${(smr * 100).toFixed(0)}% — in line with market norms.`
+        : `Submarket renewal rate is only ${(smr * 100).toFixed(0)}% — competitive market with many move-out options. Increases churn risk.`,
+  });
+
+  return factors.sort((a, b) => b.weight - a.weight);
+}
+
+// ── Action items ──────────────────────────────────────────────────────────────
+
+let _actionCounter = 1;
+
+function computeActionItems(r: RawResident): ActionItem[] {
+  const items: ActionItem[] = [];
+  const id = () => `a${_actionCounter++}`;
+
+  if (r.evict) {
+    items.push({ id: id(), priority: 'urgent', action: 'Consult legal team before any renewal discussion — eviction filing on record.', owner: 'Legal', dueInDays: 3 });
+  }
+
+  if (r.riskCat === 'very-high') {
+    items.push({ id: id(), priority: 'urgent', action: 'Call resident personally to discuss renewal intent and address concerns.', owner: 'Leasing', dueInDays: 7 });
+    if (r.wo >= 3) {
+      items.push({ id: id(), priority: 'high', action: `Resolve ${r.wo} open maintenance requests before renewal conversation.`, owner: 'Maintenance', dueInDays: 10 });
+    }
+    items.push({ id: id(), priority: 'high', action: r.pm === 'at_risk_flat' ? 'Prepare flat renewal offer — consider one-time concession to retain.' : 'Prepare renewal offer with any applicable concession package.', owner: 'Revenue', dueInDays: 14 });
+  } else if (r.riskCat === 'high') {
+    items.push({ id: id(), priority: 'high', action: 'Proactive renewal outreach — schedule personal touchpoint with resident.', owner: 'Leasing', dueInDays: 14 });
+    if (r.wo >= 2) {
+      items.push({ id: id(), priority: 'medium', action: 'Conduct unit walkthrough to address outstanding maintenance items.', owner: 'Maintenance', dueInDays: 21 });
+    }
+    if (r.nsf >= 2) {
+      items.push({ id: id(), priority: 'medium', action: 'Review payment history with resident — discuss payment plan options if needed.', owner: 'Finance', dueInDays: 14 });
+    }
+  } else if (r.riskCat === 'medium') {
+    items.push({ id: id(), priority: 'medium', action: 'Send renewal offer letter and follow up within 5 business days.', owner: 'Leasing', dueInDays: 30 });
+    items.push({ id: id(), priority: 'low', action: 'Resident satisfaction check-in — confirm amenity access and comfort.', owner: 'Leasing', dueInDays: 45 });
+  } else {
+    items.push({ id: id(), priority: 'low', action: 'Process standard renewal — send offer and await response.', owner: 'Leasing', dueInDays: 60 });
+  }
+
+  return items;
+}
+
+// ── Retention rationale ───────────────────────────────────────────────────────
+
+function computeRationale(r: RawResident): string {
+  const pPct = `${(r.pAccept * 100).toFixed(0)}%`;
+  const smPct = `${(r.smrConv * 100).toFixed(0)}%`;
+
+  if (r.retVerdict === 'yes') {
+    const inc = r.oip > 0 ? ` Recommend ${(r.oip * 100).toFixed(1)}% increase (within resident tolerance).` : ` Recommend flat renewal to maintain strong relationship.`;
+    return `Strong renewal candidate — acceptance probability ${pPct}. Submarket renewal rate ${smPct} supports retention.${inc}`;
+  }
+  if (r.retVerdict === 'conditional') {
+    const concern =
+      r.rti > 0.38 ? `rent-to-income ratio of ${(r.rti * 100).toFixed(0)}%` :
+      r.crg > 0.12 ? `cumulative rent growth of ${(r.crg * 100).toFixed(1)}%` :
+      r.wo >= 3    ? `${r.wo} recent maintenance requests` :
+      r.nsf >= 2   ? `${r.nsf} NSF payments on record` :
+                     `p(accept) of ${pPct}`;
+    return `Conditional renewal — acceptance probability ${pPct}. Key concern: ${concern}. Proactive outreach recommended before offering.`;
+  }
+  const risks: string[] = [];
+  if (r.evict) risks.push('eviction on record');
+  if (r.rti > 0.45) risks.push(`high rent burden (${(r.rti * 100).toFixed(0)}%)`);
+  if (r.crg > 0.18) risks.push(`steep rent growth (${(r.crg * 100).toFixed(1)}%)`);
+  if (r.nsf >= 3) risks.push(`${r.nsf} NSF payments`);
+  if (!risks.length) risks.push(`low acceptance probability (${pPct})`);
+  return `High churn risk — acceptance probability ${pPct}. Risk factors: ${risks.join(', ')}. Consider proactive concession or accept vacancy loss.`;
+}
+
+// ── Full resident expansion (used by detail page) ────────────────────────────
 
 export function getResidentById(id: string): Resident | undefined {
-  return residents.find((r) => r.id === id);
+  const raw = (residentsRaw as RawResident[]).find((r) => r.id === id);
+  if (!raw) return undefined;
+  return expandResident(raw);
 }
 
-export const properties = [...new Set(residents.map((r) => r.property))];
-
-export function getResidentProperty(resident: Resident): PropertyMeta {
-  return propertyMeta[resident.property] ?? propertyMeta['Greystar @ Riverside'];
+function expandResident(r: RawResident): Resident {
+  return {
+    id: r.id,
+    name: r.name,
+    unit: r.unit,
+    property: r.propertyName,
+    leaseEndDate: r.leaseEndDate,
+    monthlyRent: r.monthlyRent,
+    riskScore: r.riskScore,
+    riskCategory: r.riskCat as RiskCategory,
+    retentionVerdict: r.retVerdict as RetentionVerdict,
+    retentionRationale: computeRationale(r),
+    lifetimeValue: Math.round(r.monthlyRent * 12),
+    riskFactors: computeRiskFactors(r),
+    actionItems: computeActionItems(r),
+  };
 }
+
+// ── Dashboard list (no riskFactors/actionItems — computed on demand) ──────────
+// Uses a lighter representation to avoid computing 28K factor arrays at load time.
+
+export interface ResidentSummary {
+  id: string;
+  name: string;
+  unit: string;
+  property: string;
+  leaseEndDate: string;
+  monthlyRent: number;
+  riskScore: number;
+  riskCategory: RiskCategory;
+  retentionVerdict: RetentionVerdict;
+  lifetimeValue: number;
+  state: string;
+}
+
+export const residents: ResidentSummary[] = (residentsRaw as RawResident[]).map((r) => ({
+  id: r.id,
+  name: r.name,
+  unit: r.unit,
+  property: r.propertyName,
+  leaseEndDate: r.leaseEndDate,
+  monthlyRent: r.monthlyRent,
+  riskScore: r.riskScore,
+  riskCategory: r.riskCat as RiskCategory,
+  retentionVerdict: r.retVerdict as RetentionVerdict,
+  lifetimeValue: Math.round(r.monthlyRent * 12),
+  state: r.state,
+}));
+
+// ── Portfolio trends (historical actuals + projection) ────────────────────────
+
+export const portfolioTrends: TrendDataPoint[] = [
+  { month: "Jan '24", rentRoll: 706206, avgScore: 15.0, renewalRate: 0.605, occupancy: 0.9144, isProjection: false },
+  { month: "Feb '24", rentRoll: 707969, avgScore: 16.1, renewalRate: 0.629, occupancy: 0.9163, isProjection: false },
+  { month: "Mar '24", rentRoll: 708259, avgScore: 17.1, renewalRate: 0.642, occupancy: 0.9175, isProjection: false },
+  { month: "Apr '24", rentRoll: 709393, avgScore: 17.6, renewalRate: 0.598, occupancy: 0.9177, isProjection: false },
+  { month: "May '24", rentRoll: 712312, avgScore: 17.3, renewalRate: 0.588, occupancy: 0.9202, isProjection: false },
+  { month: "Jun '24", rentRoll: 713819, avgScore: 16.8, renewalRate: 0.585, occupancy: 0.9186, isProjection: false },
+  { month: "Jul '24", rentRoll: 713937, avgScore: 14.9, renewalRate: 0.603, occupancy: 0.9205, isProjection: false },
+  { month: "Aug '24", rentRoll: 714078, avgScore: 13.6, renewalRate: 0.599, occupancy: 0.9257, isProjection: false },
+  { month: "Sep '24", rentRoll: 714218, avgScore: 13.2, renewalRate: 0.617, occupancy: 0.9255, isProjection: false },
+  { month: "Oct '24", rentRoll: 714165, avgScore: 12.3, renewalRate: 0.636, occupancy: 0.9256, isProjection: false },
+  { month: "Nov '24", rentRoll: 714582, avgScore: 12.8, renewalRate: 0.600, occupancy: 0.9234, isProjection: false },
+  { month: "Dec '24", rentRoll: 714910, avgScore: 13.7, renewalRate: 0.586, occupancy: 0.9210, isProjection: false },
+  { month: "Jan '25", rentRoll: 719908, avgScore: 14.5, renewalRate: 0.609, occupancy: 0.9224, isProjection: false },
+  { month: "Feb '25", rentRoll: 721942, avgScore: 15.9, renewalRate: 0.648, occupancy: 0.9223, isProjection: false },
+  { month: "Mar '25", rentRoll: 722254, avgScore: 16.9, renewalRate: 0.627, occupancy: 0.9218, isProjection: false },
+  { month: "Apr '25", rentRoll: 723644, avgScore: 18.0, renewalRate: 0.623, occupancy: 0.9253, isProjection: false },
+  { month: "May '25", rentRoll: 724452, avgScore: 18.9, renewalRate: 0.605, occupancy: 0.9252, isProjection: false },
+  { month: "Jun '25", rentRoll: 724907, avgScore: 19.9, renewalRate: 0.608, occupancy: 0.9292, isProjection: false },
+  { month: "Jul '25", rentRoll: 725036, avgScore: 19.5, renewalRate: 0.615, occupancy: 0.9318, isProjection: false },
+  { month: "Aug '25", rentRoll: 725646, avgScore: 20.6, renewalRate: 0.606, occupancy: 0.9331, isProjection: false },
+  { month: "Sep '25", rentRoll: 725322, avgScore: 22.0, renewalRate: 0.624, occupancy: 0.9318, isProjection: false },
+  { month: "Oct '25", rentRoll: 725342, avgScore: 23.5, renewalRate: 0.627, occupancy: 0.9301, isProjection: false },
+  { month: "Nov '25", rentRoll: 725344, avgScore: 27.2, renewalRate: 0.614, occupancy: 0.9298, isProjection: false },
+  { month: "Dec '25", rentRoll: 725381, avgScore: 28.6, renewalRate: 0.619, occupancy: 0.9295, isProjection: false },
+  { month: "Jan '26", rentRoll: 725394, avgScore: 30.3, renewalRate: 0.623, occupancy: 0.9293, isProjection: true },
+  { month: "Feb '26", rentRoll: 725407, avgScore: 32.0, renewalRate: 0.627, occupancy: 0.9291, isProjection: true },
+  { month: "Mar '26", rentRoll: 725420, avgScore: 33.7, renewalRate: 0.631, occupancy: 0.9289, isProjection: true },
+  { month: "Apr '26", rentRoll: 725433, avgScore: 35.4, renewalRate: 0.635, occupancy: 0.9287, isProjection: true },
+  { month: "May '26", rentRoll: 725446, avgScore: 37.1, renewalRate: 0.639, occupancy: 0.9285, isProjection: true },
+  { month: "Jun '26", rentRoll: 725459, avgScore: 38.8, renewalRate: 0.643, occupancy: 0.9283, isProjection: true },
+];

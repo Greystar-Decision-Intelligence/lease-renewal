@@ -14,6 +14,10 @@ export interface PropertyMeta {
   rentControlPct: number | null;
   occupancyRate: number;
   targetOccupancy: number;
+  state?: string;
+  msa?: string;
+  numUnits?: number;
+  yearBuilt?: number;
 }
 
 export interface RecommendationStep {

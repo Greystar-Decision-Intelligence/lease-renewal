@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getResidentById, getResidentProperty } from '@/lib/data';
+
+export const dynamic = 'force-dynamic';
 import { calculateRecommendedRent, calculateCostSavings } from '@/lib/rentLogic';
 import { RiskBadge } from '@/components/RiskBadge';
 import { RetentionTag } from '@/components/RetentionTag';
@@ -15,7 +17,7 @@ export default async function ResidentPage({ params }: { params: Promise<{ id: s
   if (!resident) notFound();
 
   const sortedFactors = [...resident.riskFactors].sort((a, b) => b.weight - a.weight);
-  const propMeta = getResidentProperty(resident);
+  const propMeta = getResidentProperty(resident.property)!;
   const rentRec = calculateRecommendedRent(resident, propMeta);
   const costAnalysis = calculateCostSavings(resident.monthlyRent, rentRec.recommendedRent);
   const sortedActions = [...resident.actionItems].sort((a, b) => {
