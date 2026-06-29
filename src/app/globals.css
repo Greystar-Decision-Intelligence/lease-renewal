@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  --gs-navy: #0E2044;
+  --gs-navy-mid: #1B3461;
+  --gs-navy-light: #2A4A80;
+  --gs-gold: #C8A951;
+  --gs-gold-light: #E8D4A0;
+  --gs-bg: #F4F5F8;
+  --gs-card: #FFFFFF;
+  --gs-border: #E4E7EE;
+  --gs-text: #0E2044;
+  --gs-text-muted: #6B7A99;
+  --background: #F4F5F8;
+  --foreground: #0E2044;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--gs-bg);
+  color: var(--gs-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Greystar brand utility classes */
+.gs-navy { background-color: var(--gs-navy); }
+.gs-card { background-color: var(--gs-card); border: 1px solid var(--gs-border); border-radius: 12px; }
