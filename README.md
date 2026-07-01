@@ -157,6 +157,10 @@ python 05_pricing_recommender.py
 
 # Step 7 — Evaluate
 python 06_evaluate.py
+
+# Step 8 — Market rent estimates + PM pricing strategy
+# (needs m1_scores.parquet from Step 4 plus the RealPage CSVs at repo root)
+python 07_market_price_model.py
 ```
 
 Data files land in `data/`. All parquets and pickles are gitignored — only eval JSON files are committed.
@@ -171,7 +175,10 @@ Data files land in `data/`. All parquets and pickles are gitignored — only eva
 npm install
 npm run dev       # http://localhost:3000
 npm run build     # production build
+npm run lint      # ESLint (eslint-config-next)
 ```
+
+Note: this repo pins Next.js 16, which has breaking API changes vs. older versions — see `AGENTS.md`.
 
 To update the dashboard with new model outputs, regenerate `src/data/residents.json` and `src/data/properties.json` from the model pipeline outputs and restart.
 
@@ -216,10 +223,12 @@ lease-renewal/
 │
 ├── PROJECT.md                    Full project context, decisions, gotchas
 ├── FEATURE_CATALOG.md            Complete feature documentation
+├── AGENTS.md                     Next.js 16 breaking-changes notice for coding agents
+├── CLAUDE.md                     Guidance for Claude Code in this repo
 ├── data/                         Gitignored — parquets + pickles live here
-│   ├── model1_eval.json          Committed — M1 AUC per horizon
-│   ├── model2_eval.json          Committed — M2 AUC
-│   └── evaluation_report.json    Committed — full eval summary
+│   ├── model1_eval.json          Committed — training-time M1 AUC per horizon (03_train_model1.py)
+│   ├── model2_eval.json          Committed — training-time M2 AUC (04_train_model2.py)
+│   └── evaluation_report.json    Committed — full holdout eval (06_evaluate.py; source of the AUCs quoted above)
 └── .gitignore
 ```
 

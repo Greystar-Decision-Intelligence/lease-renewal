@@ -19,8 +19,11 @@ python 02_build_features.py   # builds m1_features.parquet (~70 features)
 python 03_train_model1.py     # trains + saves model1.pkl, m1_scores.parquet
 python 04_train_model2.py     # trains + saves model2.pkl, m2_features.parquet
 python 05_pricing_recommender.py
-python 06_evaluate.py
+python 06_evaluate.py         # writes evaluation_report.json (holdout eval)
+python 07_market_price_model.py  # market rent estimates + PM pricing; needs m1_scores.parquet + RealPage CSVs
 ```
+
+Note on metrics: `model1_eval.json` / `model2_eval.json` are written at training time (03/04); `evaluation_report.json` is the holdout evaluation from 06. The two report slightly different AUCs — the README quotes the evaluation report.
 
 Databricks auth uses profile `Prod` via `databricks.sdk.config.Config`. The SSL workaround at the top of pull files (`REQUESTS_CA_BUNDLE = certifi.where()`) is intentional — Greystar's Fortinet proxy intercepts TLS and requires certifi's bundle. Do not remove it.
 
